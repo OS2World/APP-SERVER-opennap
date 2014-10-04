@@ -1,0 +1,45 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:550: checking for path separator
+configure:578: checking for Cygwin environment
+configure:611: checking for mingw32 environment
+configure:640: checking for EMX/OS2 environment
+configure:684: checking for executable suffix
+configure:755: checking for a BSD compatible install
+configure:810: checking whether build environment is sane
+configure:867: checking whether make sets ${MAKE}
+configure:913: checking for working aclocal
+configure:926: checking for working autoconf
+configure:939: checking for working automake
+configure:952: checking for working autoheader
+configure:965: checking for working makeinfo
+configure:982: checking whether to enable maintainer-specific portions of Makefiles
+configure:1007: checking for gcc
+configure:1124: checking whether the C compiler (gcc.exe -O2 -m486 -Zmt -s -Zmt -Zcrtdll -Zsysv-signals -Zbin-files) works
+configure:1140: gcc.exe -o conftest.exe -O2 -m486 -Zmt  -s -Zmt -Zcrtdll -Zsysv-signals -Zbin-files conftest.c  1>&5
+configure:1166: checking whether the C compiler (gcc.exe -O2 -m486 -Zmt -s -Zmt -Zcrtdll -Zsysv-signals -Zbin-files) is a cross-compiler
+configure:1171: checking whether we are using GNU C
+configure:1199: checking whether gcc.exe accepts -g
+configure:1234: checking for gcc.exe option to accept ANSI C
+configure:1311: checking how to run the C preprocessor
+configure:1394: checking for ANSI C header files
+configure:1502: checking for unistd.h
+configure:1540: checking for socklen_t
+configure:1543: /usr/include/sys/socket.h: No such file or directory
+configure:1561: checking whether byte ordering is bigendian
+configure:1651: checking size of long
+configure:1692: checking for getopt
+configure:1749: checking for regcomp
+configure:1749: checking for alarm
+configure:1749: checking for syslog
+configure:1807: checking for compress2 in -lz
+configure:1850: checking for gethostbyname in -lxnet
+configure:1897: checking for socket in -lnsl
+configure:1944: checking for gethostbyname in -lsocket
+configure:1993: checking for mlockall
+configure:1993: checking for poll
+configure:1993: checking for syslog
+configure:2047: checking for default config directory
+configure:2150: checking whether running as a router
+configure:2175: checking whether to run chrooted

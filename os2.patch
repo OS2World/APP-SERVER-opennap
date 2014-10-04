@@ -1,0 +1,268 @@
+Index: configure.in
+===================================================================
+RCS file: /cvsroot/opennap/opennap/configure.in,v
+retrieving revision 1.88
+diff -u -r1.88 configure.in
+--- configure.in	29 Sep 2001 05:21:51 -0000	1.88
++++ configure.in	30 Mar 2002 04:29:54 -0000
+@@ -28,7 +28,7 @@
+ AC_CHECK_LIB(xnet,gethostbyname)
+ AC_CHECK_LIB(nsl,socket)
+ AC_CHECK_LIB(socket,gethostbyname)
+-AC_CHECK_FUNCS(mlockall poll)
++AC_CHECK_FUNCS(mlockall poll syslog)
+ 
+ dnl see if we are compiling under Win32 or Unix
+ AC_MSG_CHECKING(for default config directory)
+@@ -72,6 +72,15 @@
+ 	[if test $enableval = yes; then
+ 		AC_DEFINE(EMAIL)
+ 	fi])
++
++PLATFORM=`uname -s`
++
++case "$PLATFORM" in
++*OS/2*)
++  LDFLAGS="$LDFLAGS -Zexe"
++  REGEX=regex.o
++  ;;
++esac
+ 
+ AC_ARG_ENABLE(gprof, [  --enable-gprof	Use -pg with gcc to generate profiling data],
+ 	[if test $enableval = yes; then
+Index: hash.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/hash.c,v
+retrieving revision 1.17
+diff -u -r1.17 hash.c
+--- hash.c	23 Sep 2001 23:09:04 -0000	1.17
++++ hash.c	30 Mar 2002 04:29:54 -0000
+@@ -13,7 +13,7 @@
+ #include <stdlib.h>
+ #include "hash.h"
+ #include "debug.h"
+-#ifdef WIN32
++#if defined(WIN32) || defined(__EMX__)
+ // this is needed for the WIN32 port #def's
+ #include "opennap.h"
+ #endif
+Index: init.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/init.c,v
+retrieving revision 1.68
+diff -u -r1.68 init.c
+--- init.c	23 Sep 2001 23:09:04 -0000	1.68
++++ init.c	30 Mar 2002 04:29:56 -0000
+@@ -30,7 +30,9 @@
+ #endif
+ #ifdef __EMX__
+ #include <stdlib.h>
++#ifndef _POSIX_PATH_MAX
+ #define _POSIX_PATH_MAX _MAX_PATH
++#endif
+ #endif /* __EMX__ */
+ #include "opennap.h"
+ #include "hashlist.h"
+Index: main.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/main.c,v
+retrieving revision 1.314
+diff -u -r1.314 main.c
+--- main.c	30 Sep 2001 22:07:07 -0000	1.314
++++ main.c	30 Mar 2002 04:30:00 -0000
+@@ -16,11 +16,13 @@
+ #include <stdio.h>
+ #include <errno.h>
+ #include <time.h>
++#include <sys/types.h>
+ #include <sys/stat.h>
+ #include <ctype.h>
+ #if !defined(WIN32) || defined(__CYGWIN__)
+ #include <unistd.h>
+ #include <sys/socket.h>
++#include <sys/select.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <string.h>
+@@ -549,7 +551,7 @@
+     int     port;
+     int	disable_remote = 0;
+ 
+-#ifndef WIN32
++#if !defined(WIN32) && !defined(__EMX__)
+     not_root = (getuid () != 0);
+ #endif
+ 
+Index: metaserver.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/metaserver.c,v
+retrieving revision 1.23
+diff -u -r1.23 metaserver.c
+--- metaserver.c	24 Sep 2001 17:41:55 -0000	1.23
++++ metaserver.c	30 Mar 2002 04:30:01 -0000
+@@ -21,6 +21,7 @@
+ #else
+ # include <signal.h>
+ # include <unistd.h>
++# include <sys/types.h>
+ # include <sys/socket.h>
+ # include <netinet/in.h>
+ # include <arpa/inet.h>
+@@ -30,6 +31,8 @@
+ 
+ #if HAVE_POLL
+ #include <sys/poll.h>
++#else
++#include <sys/select.h>
+ #endif /* HAVE_POLL */
+ 
+ #if HAVE_SYSLOG
+@@ -47,8 +50,13 @@
+ volatile int sig_meta = 0;
+ 
+ #ifndef HAVE_SOCKLEN_T
++#if defined(__sun__) || defined(__EMX__)
++/* solaris 2.6 uses a signed int for the 4th arg to accept() */
++typedef int socklen_t;
++#else
+ typedef unsigned int socklen_t;
+ #endif
++#endif
+ 
+ #ifndef WIN32
+ static void
+@@ -68,7 +76,9 @@
+     puts ("  -v		display version number and exit");
+     puts ("  -l IP		listen only on interface for IP");
+     puts ("  -p <port>	listen for connection on <port> (default is 8875)");
++#ifdef HAVE_SYSLOG
+     puts ("  -s		disable syslog messages");
++#endif
+     puts ("\n  if no arguments are given, defaults to 127.0.0.1:8888");
+     exit (1);
+ }
+@@ -172,7 +182,7 @@
+     sigaction (SIGINT, &sa, 0);
+     sigaction (SIGTERM, &sa, 0);
+ 
+-#ifndef __CYGWIN__
++#ifdef SA_RESTART
+     sa.sa_flags = SA_RESTART;
+ #endif
+ 
+Index: network.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/network.c,v
+retrieving revision 1.46
+diff -u -r1.46 network.c
+--- network.c	22 Sep 2001 06:04:26 -0000	1.46
++++ network.c	30 Mar 2002 04:30:02 -0000
+@@ -13,11 +13,11 @@
+ #include <fcntl.h>
+ #include <ctype.h>
+ #if !defined(WIN32) || defined(__CYGWIN__)
++#include <sys/types.h>
+ #include <sys/socket.h>
+ #include <unistd.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+-#include <sys/types.h>
+ #include <netdb.h>
+ #include <sys/time.h>
+ #include <sys/resource.h>
+Index: opennap.h
+===================================================================
+RCS file: /cvsroot/opennap/opennap/opennap.h,v
+retrieving revision 1.309
+diff -u -r1.309 opennap.h
+--- opennap.h	30 Sep 2001 22:07:07 -0000	1.309
++++ opennap.h	30 Mar 2002 04:30:05 -0000
+@@ -11,6 +11,12 @@
+ #include "win32-support.h"
+ #endif
+ 
++#ifdef __EMX__
++#define OS2
++#define strcasecmp stricmp
++#define strncasecmp strnicmp
++#endif
++
+ #if HAVE_POLL
+ #include <sys/poll.h>
+ #endif
+@@ -1094,7 +1100,7 @@
+ #define NONULL(p) (p!=0?p:"")
+ 
+ #ifndef HAVE_SOCKLEN_T
+-#ifdef __sun__
++#if defined(__sun__) || defined(OS2)
+ /* solaris 2.6 uses a signed int for the 4th arg to accept() */
+ typedef int socklen_t;
+ #else
+Index: search.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/search.c,v
+retrieving revision 1.136
+diff -u -r1.136 search.c
+--- search.c	1 Oct 2001 17:06:34 -0000	1.136
++++ search.c	30 Mar 2002 04:30:08 -0000
+@@ -13,6 +13,9 @@
+ #include <ctype.h>
+ #include <stdio.h>
+ #include <limits.h>
++#include <sys/types.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
+ #include "opennap.h"
+ #include "debug.h"
+ 
+Index: server_connect.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/server_connect.c,v
+retrieving revision 1.76
+diff -u -r1.76 server_connect.c
+--- server_connect.c	22 Sep 2001 05:52:06 -0000	1.76
++++ server_connect.c	30 Mar 2002 04:30:09 -0000
+@@ -12,6 +12,9 @@
+ #include <string.h>
+ #include <stdio.h>
+ #ifndef WIN32
++#include <sys/types.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
+ #include <unistd.h>
+ #include <arpa/inet.h>
+ #endif
+Index: setup.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/setup.c,v
+retrieving revision 1.8
+diff -u -r1.8 setup.c
+--- setup.c	22 Sep 2001 05:52:06 -0000	1.8
++++ setup.c	30 Mar 2002 04:30:10 -0000
+@@ -11,8 +11,8 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <errno.h>
+-#include <sys/stat.h>
+ #include <sys/types.h>
++#include <sys/stat.h>
+ #include <fcntl.h>
+ #ifndef WIN32
+ #include <unistd.h>
+Index: util.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/util.c,v
+retrieving revision 1.103
+diff -u -r1.103 util.c
+--- util.c	22 Sep 2001 05:52:06 -0000	1.103
++++ util.c	30 Mar 2002 04:30:11 -0000
+@@ -20,6 +20,8 @@
+ #include <stdlib.h>
+ #ifndef WIN32
+ #include <unistd.h>
++#include <stdlib.h>
++#include <sys/types.h>
+ #include <sys/time.h>
+ #include <sys/socket.h>
+ #include <netinet/in.h>

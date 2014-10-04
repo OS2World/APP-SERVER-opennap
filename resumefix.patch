@@ -1,0 +1,41 @@
+Index: browse.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/browse.c,v
+retrieving revision 1.26
+diff -u -r1.26 browse.c
+--- browse.c	2000/07/28 20:34:17	1.26
++++ browse.c	2000/07/31 03:08:47
+@@ -222,7 +222,7 @@
+ 		    /* same directory as previous result, append */
+ 		    rsp = append_string (rsp, " \"%s\" %s %d %d %d %d", base,
+ #if RESUME
+-					 d->md5,
++					 d->hash,
+ #else
+ 					 "0",
+ #endif
+@@ -248,7 +248,7 @@
+ 		    rsp = append_string (0, "%s \"%s\" \"%s\" %s %d %d %d %d",
+ 					 user->nick, dir, base,
+ #if RESUME
+-					 d->md5,
++					 d->hash,
+ #else
+ 					 "0",
+ #endif
+Index: resume.c
+===================================================================
+RCS file: /cvsroot/opennap/opennap/resume.c,v
+retrieving revision 1.21
+diff -u -r1.21 resume.c
+--- resume.c	2000/07/28 02:18:13	1.21
++++ resume.c	2000/07/31 03:08:53
+@@ -40,7 +40,7 @@
+ 	for (ptr = flist->list; ptr; ptr = ptr->next)
+ 	{
+ 	    d = (DATUM *) ptr->data;
+-	    if (d->valid && d->size == fsize)
++	    if (d->size == fsize)
+ 	    {
+ 		ASSERT (validate_user (d->user));
+ 		send_cmd (con, MSG_SERVER_RESUME_MATCH,
